@@ -1,0 +1,1 @@
+"""SteppeGuard demonstration logic."""

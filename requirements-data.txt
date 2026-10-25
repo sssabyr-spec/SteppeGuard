@@ -1,0 +1,5 @@
+# Only needed to download/extract observations; not needed by Streamlit Cloud.
+-r requirements.txt
+requests>=2.32,<3
+rasterio==1.4.3
+planetary-computer==1.0.0

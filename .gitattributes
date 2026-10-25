@@ -1,0 +1,11 @@
+# Normalize source files across Windows and Linux.
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.txt text eol=lf
+
+# Observation manifests hash exact bytes, including CSV/JSON line endings.
+# Preserve every archived data file byte-for-byte on add and checkout.
+data/** -text
+*.tif binary

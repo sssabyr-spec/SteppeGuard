@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "_comment": "DEMO DATA: temporary synthetic geometries in an approximate pilot-region setting; NOT official Akkum boundaries or verified locations. Replace with digitized official Akkum pasture polygons before operational use.",
+  "features": [
+    {"type":"Feature","properties":{"paddock_id":"Paddock 1","geometry_source":"TEMPORARY DEMO GEOMETRY"},"geometry":{"type":"Polygon","coordinates":[[[64.48,45.10],[64.52,45.105],[64.525,45.135],[64.48,45.14],[64.48,45.10]]]}},
+    {"type":"Feature","properties":{"paddock_id":"Paddock 2","geometry_source":"TEMPORARY DEMO GEOMETRY"},"geometry":{"type":"Polygon","coordinates":[[[64.53,45.105],[64.58,45.10],[64.59,45.135],[64.535,45.14],[64.53,45.105]]]}},
+    {"type":"Feature","properties":{"paddock_id":"Paddock 3","geometry_source":"TEMPORARY DEMO GEOMETRY"},"geometry":{"type":"Polygon","coordinates":[[[64.485,45.15],[64.53,45.15],[64.535,45.18],[64.49,45.185],[64.485,45.15]]]}},
+    {"type":"Feature","properties":{"paddock_id":"Paddock 4","geometry_source":"TEMPORARY DEMO GEOMETRY"},"geometry":{"type":"Polygon","coordinates":[[[64.54,45.15],[64.595,45.145],[64.60,45.18],[64.545,45.185],[64.54,45.15]]]}}
+  ]
+}

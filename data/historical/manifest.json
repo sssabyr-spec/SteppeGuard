@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "polygon_sha256": "ffb842d3cf0fab63ec0e83519bec38f521968e966c42b16181d1d3423eaf02f5",
+  "coverage_start": "2021-03-01",
+  "coverage_end": "2026-09-30",
+  "cadence": "Monthly: trailing 30 days ending on month-end, March-November",
+  "reference_method": "Leave-one-year-out same-calendar windows; >=3 other evaluable years; shared monthly pixel support",
+  "retrospective_only": true,
+  "selected_date": "2025-10-31",
+  "selection_rule": "Highest unchanged integer stress score among evaluable grazing windows; earliest date breaks ties",
+  "requested_windows": 52,
+  "evaluated_windows": 38,
+  "conflict_windows": 13,
+  "retrieved_at": "2026-10-10T07:46:12.609474+00:00",
+  "satellite_source": "https://planetarycomputer.microsoft.com/api/stac/v1/search",
+  "climate_source": "https://archive-api.open-meteo.com/v1/archive",
+  "official_plan_source": "https://old.adilet.zan.kz/kaz/docs/G24LF02818M",
+  "limitations": "Monthly sample, not daily extrema. Retrospective references can include later years. 2026 October-November not yet complete. Scenario applies 2026-style seasons to past dates; not evidence of actual historical grazing or predictive skill.",
+  "artifact_sha256": {
+    "case_composite_2021-10-31.tif": "2c5c979123b0bd410aae905b5759583e5c061913801d0205eed72daa21b01c21",
+    "case_composite_2022-10-31.tif": "8a1378dd082d96cb963a5b34ce16ff40c42d71b6766c06796c037de660f15a1a",
+    "case_composite_2023-10-31.tif": "02de1863d9d5333b5e8c9420313a361b52d55e39ba23a20e713691d3c7756081",
+    "case_composite_2024-10-31.tif": "6481038878c67081f2d16fcdbbb13695dbd8b0b5e232a7cd8556b0c1dd807c8b",
+    "case_composite_2025-10-31.tif": "ee0191741c3c371f58b3485a387c02ade52196e202aca70cec4c92dd13f798a6",
+    "climate_daily.csv": "27010d959d480b5bbbac285800238b3212ffed18ad9e73b95eabd3f48cbc8edc",
+    "climate_source_records.json": "fdff0fc0765fcec890cd77a002ce6edbe9abc173f42edcf2c6b043c793be628e",
+    "evaluation.csv": "e49e8c2e9a997811940298931e5daab6e5d551573aac346ad393eada2b89f95b",
+    "source_records.json": "2ea1fad95d3a3a0a5f2920acdd97e8e56c20405910735153cb80ea7d7e9212a5"
+  }
+}

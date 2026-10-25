@@ -1,0 +1,5 @@
+paddock_id,current_ndvi,seasonal_ndvi,vegetation_anomaly_pct,rainfall_anomaly_pct,soil_moisture_status,temperature_anomaly_c,official_plan,water_access
+Paddock 1,0.285,0.300,-5,-10,Normal,0.8,Rest,Demo water point nearby
+Paddock 2,0.222,0.300,-26,-38,Below normal,2.4,Spring–summer grazing,Demo seasonal access
+Paddock 3,0.276,0.300,-8,-12,Normal,1.2,Summer grazing,Demo water point nearby
+Paddock 4,0.246,0.300,-18,-22,Slightly below normal,1.2,Autumn grazing,Demo limited access

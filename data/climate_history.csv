@@ -1,0 +1,5 @@
+date,paddock_id,current_ndvi,seasonal_ndvi,rainfall_anomaly_pct,soil_moisture_status,temperature_anomaly_c,event
+2026-06-01,Paddock 2,0.330,0.340,-5,Normal,0.4,Normal
+2026-06-15,Paddock 2,0.290,0.330,-15,Slightly below normal,1.0,Early vegetation decline
+2026-07-01,Paddock 2,0.222,0.300,-38,Below normal,2.4,SteppeGuard warning
+2026-07-15,Paddock 2,0.150,0.280,-48,Below normal,3.6,Severe vegetation stress
