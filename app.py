@@ -48,7 +48,7 @@ with left:
     st.title("SteppeGuard")
     st.markdown('<p class="lead">Climate-smart pasture management</p>', unsafe_allow_html=True)
 with right:
-    st.markdown("**Prototype / MIT Solve 2027**")
+    st.markdown("**Prototype · v0.2**")
     st.caption("Decision-support demonstration · v0.2")
 observed_count = int(metrics.vegetation_source.ne("DEMO").sum())
 fully_observed = observed_count == len(metrics) and metrics.soil_source.ne("DEMO").all()
@@ -240,7 +240,7 @@ with about:
     st.markdown("**Future integrations — not yet implemented**")
     st.write("Georeferenced official paddock boundaries · Paddock-specific environmental summaries · Livestock numbers · Pasture carrying capacity · Watering points")
     st.markdown("**Data provenance**")
-    st.write("Satellite NDVI and ERA5 precipitation, temperature and surface soil moisture are summarized for a 5 km analysis zone around 44.916664, 64.712612. All four paddock schedules use this shared signal until the official plan map is georeferenced. The four displayed sectors are illustrative, not official boundaries. The 2026 rotation schedule is retained as the official-plan baseline; exact seasonal dates remain assumptions. Water access is not assessed. The historical evaluation applies these seasonal rules retrospectively to observed conditions; it does not establish actual past grazing, predictive skill or field outcomes. MIT Solve 2027 describes the intended application/demo context, not an affiliation or endorsement.")
+    st.write("Satellite NDVI and ERA5 precipitation, temperature and surface soil moisture are summarized for a 5 km analysis zone around 44.916664, 64.712612. All four paddock schedules use this shared signal until the official plan map is georeferenced. The four displayed sectors are illustrative, not official boundaries. The 2026 rotation schedule is retained as the official-plan baseline; exact seasonal dates remain assumptions. Water access is not assessed. The historical evaluation applies these seasonal rules retrospectively to observed conditions; it does not establish actual past grazing, predictive skill or field outcomes.")
     st.markdown("Sources: [Microsoft Planetary Computer / Copernicus Sentinel-2](https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a) · [Open-Meteo / ECMWF ERA5](https://open-meteo.com/en/docs/historical-weather-api) · [Official plan](https://old.adilet.zan.kz/kaz/docs/G24LF02818M)")
 st.divider()
 st.caption("This prototype is a decision-support demonstration and should not yet be used for operational livestock or land-management decisions.")
