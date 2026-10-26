@@ -17,7 +17,9 @@ class AppTests(unittest.TestCase):
         historical = patch("src.historical.load_history", return_value=(None, None))
         historical.start()
         self.addCleanup(historical.stop)
-        app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=45).run()
+        app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=45)
+        app.session_state["language"] = "en"
+        app.run()
         self.assertFalse(app.exception)
         self.assertEqual([tab.label for tab in app.tabs], ["Pasture dashboard", "Drought Replay", "About the pilot"])
         self.assertEqual([m.value for m in app.metric[:4]], ["4", "1", "1", "2"])

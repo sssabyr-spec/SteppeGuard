@@ -34,7 +34,9 @@ class RealPilotTests(unittest.TestCase):
         self.assertLess(unary_union(polygons.geometry).symmetric_difference(zone).area, 1e-10)
 
     def test_real_dashboard_without_global_demo_warning(self):
-        app = AppTest.from_file(str(DATA_DIR.parent / "app.py"), default_timeout=40).run()
+        app = AppTest.from_file(str(DATA_DIR.parent / "app.py"), default_timeout=40)
+        app.session_state["language"] = "en"
+        app.run()
         self.assertFalse(app.exception)
         self.assertEqual([item.value for item in app.tabs[1].metric[:4]], ["4", "0", "4", "0"])
         self.assertFalse(any("DEMO DATA" in warning.value or "MIXED DATA" in warning.value for warning in app.warning))

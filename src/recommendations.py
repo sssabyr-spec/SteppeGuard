@@ -33,3 +33,33 @@ def recommend(metrics, assessment_date):
     return {"decision": decision, "explanation": f"{evidence} {reason}",
             "plan_now": "Graze" if scheduled else "Rest",
             "changed": scheduled and score > 30}
+
+
+def explanation_text(metrics, assessment_date, lang="ru", result=None):
+    """Render an existing canonical decision; never change its thresholds or data."""
+    from src.i18n import t, display, date_text
+
+    result = result if result is not None else metrics
+    if lang == "en":
+        return result["explanation"]
+
+    def evidence_part(field, prefix):
+        value = metrics[field]
+        direction = "below" if value < 0 else "above" if value > 0 else "at"
+        return t(f"{prefix}_{direction}", lang, amount=f"{abs(value):.1f}")
+
+    evidence = t("recommendation_evidence", lang,
+                 vegetation=evidence_part("vegetation_anomaly_pct", "vegetation"),
+                 rainfall=evidence_part("rainfall_anomaly_pct", "rainfall"))
+    # Reason wording follows the already-computed decision, not new scoring rules.
+    reasons = {
+        "KEEP RESTING": "Preserve the rest period specified in the 2026 plan.",
+        "CONTINUE PLANNED REST": "Outside the illustrative grazing season; reassess before grazing begins.",
+        "MONITOR / REDUCE PRESSURE": "Monitor recovery and reduce grazing pressure; reassess in 14 days.",
+        "SUITABLE FOR PLANNED GRAZING": "Climate indicators support the planned grazing window; confirm conditions in the field.",
+    }
+    if result["decision"] == "DELAY GRAZING":
+        reason = t("delay_reason", lang, day=date_text(assessment_date + timedelta(days=14), lang))
+    else:
+        reason = display(reasons[result["decision"]], lang)
+    return f"{evidence} {reason}"

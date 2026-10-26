@@ -77,7 +77,9 @@ class RealHistoryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "checksum"):
                 load_history(root)
         with patch("src.historical.load_history", side_effect=ValueError("checksum mismatch")):
-            app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=40).run()
+            app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=40)
+            app.session_state["language"] = "en"
+            app.run()
             self.assertFalse(app.exception)
             self.assertTrue(any("failed validation" in e.value for e in app.error))
             self.assertEqual(app.metric[0].value, "4")
@@ -87,7 +89,9 @@ class RealHistoryTests(unittest.TestCase):
         meta, rows = load_history()
         meta.update(selected_date=None, conflict_windows=0)
         with patch("src.historical.load_history", return_value=(meta, rows)):
-            app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=40).run()
+            app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=40)
+            app.session_state["language"] = "en"
+            app.run()
             self.assertFalse(app.exception)
             self.assertEqual(app.tabs[1].label, "Historical evaluation")
             self.assertTrue(any("No meaningful observed grazing conflict" in e.value for e in app.info))

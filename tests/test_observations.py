@@ -126,7 +126,9 @@ class ObservationTests(unittest.TestCase):
         polygons, metrics, history = load_data(include_observed=False)
         polygons, metrics = apply_observations(polygons, metrics, self.directory)
         with patch("src.data_loader.load_data", return_value=(polygons, metrics, history)):
-            app = AppTest.from_file(str(DATA_DIR.parent / "app.py"), default_timeout=30).run()
+            app = AppTest.from_file(str(DATA_DIR.parent / "app.py"), default_timeout=30)
+            app.session_state["language"] = "en"
+            app.run()
         self.assertFalse(app.exception)
         self.assertTrue(any("MIXED DATA" in item.value for item in app.warning))
         self.assertTrue(any("PARTLY OBSERVED" in item.value for item in app.caption))
@@ -135,7 +137,9 @@ class ObservationTests(unittest.TestCase):
         self.assertIn("Source", facts.columns)
         self.assertTrue(any("REANALYSIS" in item for item in facts.Source))
         with patch("src.data_loader.load_data", side_effect=ValueError("Invalid test observations")):
-            app = AppTest.from_file(str(DATA_DIR.parent / "app.py"), default_timeout=30).run()
+            app = AppTest.from_file(str(DATA_DIR.parent / "app.py"), default_timeout=30)
+            app.session_state["language"] = "en"
+            app.run()
         self.assertFalse(app.exception)
         self.assertTrue(any("not replaced silently" in item.value for item in app.error))
 

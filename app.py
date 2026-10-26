@@ -6,11 +6,15 @@ import folium
 import streamlit as st
 from src.data_loader import load_data
 from src.scoring import calculate_stress
-from src.recommendations import recommend
+from src.recommendations import recommend, explanation_text
 from src.historical import load_history
 from src.replay import render_observed_replay
+from src.i18n import DEFAULT_LANGUAGE, LANGUAGES, t, display, display_frame, localize_chart
 
-st.set_page_config(page_title="SteppeGuard · Akkum pilot", page_icon="🌾", layout="wide")
+lang = st.session_state.get("language", DEFAULT_LANGUAGE)
+st.set_page_config(page_title=display("SteppeGuard · Akkum pilot", lang), page_icon="🌾", layout="wide")
+lang = st.sidebar.radio("Язык / Language", options=list(LANGUAGES),
+                        format_func=LANGUAGES.get, key="language")
 st.markdown("""<style>
 .block-container{max-width:1440px;padding-top:4.5rem;padding-bottom:3rem}
 h1{letter-spacing:-.05em;font-size:3.4rem!important} h2{letter-spacing:-.025em}
@@ -39,25 +43,25 @@ def prepared_data():
 try:
     polygons, metrics, history = prepared_data()
 except (ValueError, OSError, KeyError) as exc:
-    st.error(f"Unable to validate the local datasets: {exc}. Invalid observation bundles are not replaced silently with demo values.")
+    st.error(t('unable_to_validate_the_local_datasets_p0_invalid', lang, p0=f'{exc}'))
     st.stop()
 
 left, right = st.columns([3, 1])
 with left:
-    st.markdown('<div class="eyebrow">Akkum Rural District · Kazakhstan</div>', unsafe_allow_html=True)
-    st.title("SteppeGuard")
-    st.markdown('<p class="lead">Climate-smart pasture management</p>', unsafe_allow_html=True)
+    st.markdown(t('akkum_rural_district_kazakhstan', lang), unsafe_allow_html=True)
+    st.title(t('steppeguard', lang))
+    st.markdown(t('climate_smart_pasture_management', lang), unsafe_allow_html=True)
 with right:
-    st.markdown("**Prototype · v0.2**")
-    st.caption("Decision-support demonstration · v0.2")
+    st.markdown(t('prototype_v0_2', lang))
+    st.caption(t('decision_support_demonstration_v0_2', lang))
 observed_count = int(metrics.vegetation_source.ne("DEMO").sum())
 fully_observed = observed_count == len(metrics) and metrics.soil_source.ne("DEMO").all()
 if fully_observed:
-    st.caption("Observed satellite data · ERA5 reanalysis data · Approximate analysis zone: 5 km around Akkum (44.916664, 64.712612). All four current paddock schedules use this same environmental signal until official paddock boundaries are georeferenced. Displayed sectors are illustrative, not official boundaries.")
+    st.caption(t('observed_satellite_data_era5_reanalysis_data_approximate_analysis', lang))
 elif observed_count:
-    st.warning(f"MIXED DATA · {observed_count} pilot area uses observed Sentinel-2 NDVI and ERA5 reanalysis. Soil moisture, other paddocks and replay remain DEMO. See each assessment's date and provenance.", icon="ℹ️")
+    st.warning(t('mixed_data_p0_pilot_area_uses_observed_sentinel', lang, p0=f'{observed_count}'), icon="ℹ️")
 else:
-    st.warning("DEMO DATA · No observed bundle loaded. Synthetic environmental values and temporary boundaries; assessment: 01 July 2026.", icon="ℹ️")
+    st.warning(t('demo_data_no_observed_bundle_loaded_synthetic_environmental', lang), icon="ℹ️")
 
 historical_error = None
 try:
@@ -67,21 +71,29 @@ except (ValueError, OSError, KeyError) as exc:
     historical_error = str(exc)
 replay_label = "Observed Historical Replay" if historical_meta and historical_meta.get("selected_date") else "Historical evaluation" if historical_meta or historical_error else "Drought Replay"
 if historical_meta and historical_meta.get("selected_date"):
-    replay, dashboard, about = st.tabs(["Observed case study", "September 2026 assessment", "About the pilot"])
+    replay, dashboard, about = st.tabs([t('observed_case_study', lang), t('september_2026_assessment', lang), t('about_the_pilot', lang)])
 else:
-    dashboard, replay, about = st.tabs(["Pasture dashboard", replay_label, "About the pilot"])
+    dashboard, replay, about = st.tabs([t('pasture_dashboard', lang), display(replay_label, lang), t('about_the_pilot', lang)])
 
 with dashboard:
     counters = st.columns(4)
-    counters[0].metric("Total paddocks", len(metrics))
+    counters[0].metric(t('total_paddocks', lang), display(len(metrics), lang))
     for col, level, label in zip(counters[1:], ["HIGH", "MODERATE", "LOW"], ["High stress paddocks", "Moderate stress paddocks", "Low stress paddocks"]):
-        col.metric(label, int((metrics.stress_level == level).sum()))
-    st.caption("All four schedules use the same observed 5 km pilot-zone signal; these are not four independent paddock measurements. Rest remains a separate management status." if fully_observed else "Stress counts include resting paddocks. Rest is a management status, independent of climate stress.")
-    st.subheader("When should planned grazing be adapted?")
+        col.metric(display(label, lang), display(int((metrics.stress_level == level).sum()), lang))
+    st.caption(t('all_four_schedules_use_the_same_observed_5', lang) if fully_observed else t('stress_counts_include_resting_paddocks_rest_is_a', lang))
+    st.subheader(t('when_should_planned_grazing_be_adapted', lang))
     map_col, detail_col = st.columns([1.45, 1], gap="large")
     with map_col:
-        selected = st.selectbox("Select a paddock to inspect", metrics.paddock_id.tolist(), index=1)
-        st.caption("Use this selector to update the map highlight and detail panel. Hover over a polygon for a summary.")
+        paddock_options = metrics.paddock_id.tolist()
+        selected_paddock = st.session_state.get("selected_paddock", paddock_options[1])
+        # Streamlit serializes selectbox labels. A language-specific widget key
+        # prevents an old translated label from being decoded with the new locale.
+        # The independent state value always retains the canonical paddock ID.
+        selected = st.selectbox(t('select_a_paddock_to_inspect', lang), paddock_options,
+                                index=paddock_options.index(selected_paddock),
+                                format_func=lambda value: display(value, lang), key=f"paddock_{lang}")
+        st.session_state["selected_paddock"] = selected
+        st.caption(t('use_this_selector_to_update_the_map_highlight', lang))
         map_rows = []
         for _, geom_row in polygons.iterrows():
             row = metrics.set_index("paddock_id").loc[geom_row.paddock_id]
@@ -100,39 +112,40 @@ with dashboard:
             folium.Polygon(locations=[(lat, lon) for lon, lat in item["polygon"]],
                            color="#20352c" if item["name"] == selected else "#ffffff",
                            weight=item["width"], fill=True, fill_color=fill, fill_opacity=0.65,
-                           tooltip=f"{item['name']} · {item['score']}/100 · {item['level']} · {item['decision']}").add_to(pasture_map)
+                           tooltip=t('map_tooltip', lang, p0=f"{item['name']}", p1=f"{item['score']}", p2=f"{item['level']}", p3=f"{item['decision']}")).add_to(pasture_map)
             folium.Marker([item["position"][1], item["position"][0]],
                           icon=folium.DivIcon(icon_size=(90, 24), icon_anchor=(45, 12),
-                              html=f'<div style="text-align:center;font:600 13px sans-serif;color:#182e24">{item["name"]}</div>')).add_to(pasture_map)
+                              html=t('map_marker', lang, p0=f"{item['name']}"))).add_to(pasture_map)
         if fully_observed:
-            folium.GeoJson(polygons.attrs["analysis_geometry"], name="Approximate analysis zone",
+            folium.GeoJson(polygons.attrs["analysis_geometry"], name=t('approximate_analysis_zone', lang),
                            style_function=lambda _: {"color": "#20352c", "weight": 2, "fillOpacity": 0, "dashArray": "6 4"},
-                           tooltip="Akkum 5 km analysis zone · not official paddock boundaries").add_to(pasture_map)
+                           tooltip=t('akkum_5_km_analysis_zone_not_official_paddock', lang)).add_to(pasture_map)
         min_x, min_y, max_x, max_y = polygons.total_bounds
         pasture_map.fit_bounds([[min_y, min_x], [max_y, max_x]])
         st.components.v1.html(pasture_map.get_root().render(), height=420)
-        st.markdown('<div class="legend">🟢 Low stress &nbsp; 🟠 Moderate &nbsp; 🔴 High &nbsp; ⚪ Rest</div>', unsafe_allow_html=True)
-        st.caption("Approximate analysis zone · Dashed boundary is the 5 km buffer. Four sectors are an illustrative rotation layout, not georeferenced paddock boundaries. Every sector uses the same zone-level data." if fully_observed else "Schematic geographic view · Observed pilot areas use their imported geometry; remaining polygons are synthetic. A provisional pilot area is not an official paddock boundary." if observed_count else "Schematic geographic view · Temporary demo polygons, not official boundaries. No basemap service or API key is required.")
+        st.markdown(t('low_stress_nbsp_moderate_nbsp_high_nbsp_rest', lang), unsafe_allow_html=True)
+        st.caption(t('approximate_analysis_zone_dashed_boundary_is_the_5', lang) if fully_observed else t('schematic_geographic_view_observed_pilot_areas_use_their', lang) if observed_count else t('schematic_geographic_view_temporary_demo_polygons_not_official', lang))
     row = metrics.set_index("paddock_id").loc[selected]
+    explanation = explanation_text(row, date.fromisoformat(row.assessment_date), lang)
     with detail_col:
         with st.container(border=True):
-            st.markdown(f"### {selected}")
-            st.caption(f"{row.data_status} · Assessment: {row.assessment_date} · Boundary: {row.boundary_status}")
-            st.caption("2026 OFFICIAL PLAN · AKKUM ROTATION SCHEDULE")
-            st.write(f"**{row.official_plan}**")
+            st.markdown(t('paddock_heading', lang, p0=f'{selected}'))
+            st.caption(t('assessment_boundary_caption', lang, p0=f'{row.data_status}', p1=f'{row.assessment_date}', p2=f'{row.boundary_status}'))
+            st.caption(t('2026_official_plan_akkum_rotation_schedule', lang))
+            st.write(t('strong_value', lang, p0=f'{row.official_plan}'))
             color = "#" + "".join(f"{c:02x}" for c in COLORS[row.stress_level])
-            st.markdown(f'<div class="eyebrow">Climate Stress Score</div><div class="score" style="color:{color}">{row.stress_score} <small>/ 100</small></div><strong style="color:{color}">{row.stress_level}</strong>', unsafe_allow_html=True)
+            st.markdown(t('stress_score_card', lang, p0=f'{color}', p1=f'{row.stress_score}', p2=f'{color}', p3=f'{row.stress_level}'), unsafe_allow_html=True)
             if row.vegetation_source != "DEMO" and row.soil_source == "DEMO":
-                st.caption("PARTLY OBSERVED SCORE · Soil moisture still uses the demo category; this is not a fully observed assessment.")
+                st.caption(t('partly_observed_score_soil_moisture_still_uses_the', lang))
             st.divider()
-            st.caption("STEPPEGUARD RECOMMENDATION")
+            st.caption(t('steppeguard_recommendation', lang))
             if row.decision == "DELAY GRAZING":
-                st.error(f"**{row.decision}**\n\n{row.explanation}")
+                st.error(t('recommendation_detail', lang, p0=f'{row.decision}', p1=explanation))
             elif row.stress_level == "MODERATE":
-                st.warning(f"**{row.decision}**\n\n{row.explanation}")
+                st.warning(t('recommendation_detail', lang, p0=f'{row.decision}', p1=explanation))
             else:
-                st.success(f"**{row.decision}**\n\n{row.explanation}")
-        st.markdown("**Vegetation & climate**")
+                st.success(t('recommendation_detail', lang, p0=f'{row.decision}', p1=explanation))
+        st.markdown(t('vegetation_climate', lang))
         facts = {"Current NDVI": f"{row.current_ndvi:.3f}", "Seasonal baseline NDVI": f"{row.seasonal_ndvi:.3f}",
                  "Vegetation anomaly": f"{row.vegetation_anomaly_pct:+.1f}%", "Rainfall anomaly": f"{row.rainfall_anomaly_pct:+.1f}%",
                  "Soil moisture": row.soil_moisture_status, "Temperature anomaly": f"{row.temperature_anomaly_c:+.1f} °C",
@@ -150,49 +163,50 @@ with dashboard:
             sources += [row.soil_source] * 3
         facts_table = pd.DataFrame(facts.items(), columns=["Indicator", "Value"])
         facts_table["Source"] = sources
-        st.dataframe(facts_table, hide_index=True, width="stretch")
+        st.dataframe(display_frame(facts_table, lang), hide_index=True, width="stretch")
         if row.vegetation_source != "DEMO":
-            with st.expander("Observation provenance"):
-                st.write(f"Window: {row.period_start} to {row.assessment_date}. Historical reference: same calendar dates in {row.baseline_years} (short reference, not a 30-year normal).")
-                st.write(f"Sentinel-2: {int(row.ndvi_scene_count)} accepted dates; latest scene {row.latest_scene}. SCL cloud/shadow/snow/water masking; at least 70% valid land coverage.")
+            with st.expander(t('observation_provenance', lang)):
+                st.write(t('window_p0_to_p1_historical_reference_same_calendar', lang, p0=f'{row.period_start}', p1=f'{row.assessment_date}', p2=f'{row.baseline_years}'))
+                st.write(t('sentinel_2_p0_accepted_dates_latest_scene_p1', lang, p0=f'{int(row.ndvi_scene_count)}', p1=f'{row.latest_scene}'))
                 if fully_observed:
-                    st.write(f"Pixelwise median composites at 20 m, with at least two clear observations per pixel. Current and historical means use exactly the same valid land footprint ({row.common_valid_fraction:.1%} of the buffer). The baseline is the equal-weight mean of five historical composites. Water and other excluded pixels are not represented.")
-                    st.write("These are shared pilot-area indicators, not measurements of the individual illustrated paddocks. The buffer includes land around the village and has not been restricted to legally designated pasture.")
-                    st.write(f"Soil classification: {row.soil_status_method}")
+                    st.write(t('pixelwise_median_composites_at_20_m_with_at', lang, p0=f'{row.common_valid_fraction:.1%}'))
+                    st.write(t('these_are_shared_pilot_area_indicators_not_measurements', lang))
+                    st.write(t('soil_classification_p0', lang, p0=f'{row.soil_status_method}'))
                 else:
-                    st.write("Current NDVI is the median of polygon-mean scene NDVI; baseline is the equal-weight mean of historical annual medians.")
-                st.write("Precipitation is the period total (rain plus snow); temperature is the daily-mean average. ERA5 is a coarse grid reanalysis at the pilot centroid, not a pasture weather-station measurement. The existing rainfall score input uses the precipitation anomaly.")
-                st.write(f"Geometry: {row.geometry_source}. Downloaded: {row.retrieved_at}.")
-                st.caption(f"Polygon SHA-256: {row.polygon_sha256}")
-                st.markdown(f"[Sentinel-2 source]({row.ndvi_source_url}) · [Climate source]({row.climate_source_url})")
-    st.subheader("Official Plan vs Climate-Adaptive Plan")
-    st.write("Static pasture plans cannot anticipate unusual drought or delayed vegetation recovery. SteppeGuard uses environmental observations to identify when planned grazing should be adapted.")
+                    st.write(t('current_ndvi_is_the_median_of_polygon_mean', lang))
+                st.write(t('precipitation_is_the_period_total_rain_plus_snow', lang))
+                st.write(t('geometry_p0_downloaded_p1', lang, p0=f'{row.geometry_source}', p1=f'{row.retrieved_at}'))
+                st.caption(t('polygon_sha_256_p0', lang, p0=f'{row.polygon_sha256}'))
+                st.markdown(t('sentinel_2_source_p0_climate_source_p1', lang, p0=f'{row.ndvi_source_url}', p1=f'{row.climate_source_url}'))
+    st.subheader(t('official_plan_vs_climate_adaptive_plan', lang))
+    st.write(t('static_pasture_plans_cannot_anticipate_unusual_drought_or', lang))
     comparison = metrics[["paddock_id", "official_plan", "plan_now", "decision", "stress_score", "stress_level", "changed", "assessment_date", "data_status"]].copy()
     comparison["changed"] = comparison.changed.map({True: "ADAPTED", False: "As planned"})
     comparison.columns = ["Paddock", "Official Plan", "Plan at assessment", "SteppeGuard Decision", "Score / 100", "Stress", "Plan change", "Assessment date", "Data source"]
     def highlight_adaptation(r):
-        return ["background-color: #fce9d9; color: #592d17" if r["Plan change"] == "ADAPTED" else ""] * len(r)
-    st.dataframe(comparison.style.apply(highlight_adaptation, axis=1), hide_index=True, width="stretch")
-    st.caption("Shaded rows change planned grazing. Season windows remain illustrative: spring–summer Mar–Aug, summer Jun–Aug, autumn Sep–Nov. Decisions use each row's assessment date and the retained 2026 official-plan baseline.")
-    st.markdown("[Official Akkum pasture-management plan, 2025–2029 · Adilet](https://old.adilet.zan.kz/kaz/docs/G24LF02818M)")
-    with st.expander("How the score and decisions work"):
-        st.write("Score = 50% vegetation stress + 30% rainfall stress + 20% soil moisture / heat stress.")
-        st.write("Vegetation reaches 100 stress at −35%; rainfall at −50%. Normal / slightly below normal / below normal soil moisture maps to 0 / 40 / 100. Heat reaches 100 at +4°C. Soil and heat are averaged. Components are capped at 0–100, then the final score is rounded to an integer.")
-        st.write("0–30 LOW: planned grazing may proceed. 31–60 MODERATE: monitor / reduce pressure. 61–100 HIGH: delay grazing. Scheduled rest always takes precedence. These are illustrative thresholds, not validated agronomic limits.")
-        st.write(f"{selected}: vegetation {row.vegetation_stress:.1f} × 0.5 + rainfall {row.rainfall_stress:.1f} × 0.3 + soil/heat {row.moisture_heat_stress:.1f} × 0.2 → **{row.stress_score}/100**.")
-        st.caption("The score weights and recommendation thresholds are unchanged. Imported NDVI, precipitation, temperature and soil moisture use the stated current/reference periods. Soil categories are a provisional interpretation of reanalysis anomalies. Water access does not affect the score." if fully_observed else "Observed rows calculate anomalies from the imported period and historical reference; demo rows retain synthetic expectations. Soil moisture remains DEMO where labeled. Water access does not affect the score.")
+        return ["background-color: #fce9d9; color: #592d17" if comparison.loc[r.name, "Plan change"] == "ADAPTED" else ""] * len(r)
+    st.dataframe(display_frame(comparison, lang).style.apply(highlight_adaptation, axis=1), hide_index=True, width="stretch")
+    st.caption(t('shaded_rows_change_planned_grazing_season_windows_remain', lang))
+    st.markdown(t('official_akkum_pasture_management_plan_2025_2029_adilet', lang))
+    with st.expander(t('how_the_score_and_decisions_work', lang)):
+        st.write(t('score_50_vegetation_stress_30_rainfall_stress_20', lang))
+        st.write(t('vegetation_reaches_100_stress_at_35_rainfall_at', lang))
+        st.write(t('0_30_low_planned_grazing_may_proceed_31', lang))
+        st.write(t('score_breakdown', lang, p0=f'{selected}', p1=f'{row.vegetation_stress:.1f}', p2=f'{row.rainfall_stress:.1f}', p3=f'{row.moisture_heat_stress:.1f}', p4=f'{row.stress_score}'))
+        st.caption(t('the_score_weights_and_recommendation_thresholds_are_unchanged', lang) if fully_observed else t('observed_rows_calculate_anomalies_from_the_imported_period', lang))
     export = metrics.copy()
     for column in export.columns:
         if column.endswith("_pct"):
             export[column] = pd.to_numeric(export[column]).round(1)
-    st.download_button("Download assessment · CSV", export.to_csv(index=False).encode("utf-8-sig"), "steppeguard_assessment.csv", "text/csv")
+    st.download_button(t('download_assessment_csv', lang), export.to_csv(index=False).encode("utf-8-sig"), "steppeguard_assessment.csv", "text/csv")
 
 def render_demo_replay():
-    st.subheader("Drought Replay")
-    st.write("Paddock 2 · A synthetic deterioration scenario, June–July 2026")
-    st.caption("DEMO DATA · This includes simulated dates after the dashboard assessment. It is not a validated historical forecast or evidence of predictive performance.")
+    st.subheader(t('drought_replay', lang))
+    st.write(t('paddock_2_a_synthetic_deterioration_scenario_june_july', lang))
+    st.caption(t('demo_data_this_includes_simulated_dates_after_the', lang))
     dates = history.date.dt.strftime("%d %b %Y").tolist()
-    replay_date = st.select_slider("Replay through", options=dates, value=dates[-1])
+    replay_date = st.select_slider(t('replay_through', lang), options=dates, value=dates[-1],
+                                   format_func=lambda value: display(value, lang), key="demo_replay_date")
     end = dates.index(replay_date)
     shown = history.iloc[:end + 1]
     point = shown.iloc[-1].to_dict()
@@ -200,47 +214,48 @@ def render_demo_replay():
     point["official_plan"] = "Spring–summer grazing"
     replay_decision = recommend(point, point["date"].date())
     a, b, c = st.columns(3)
-    a.metric("Demo NDVI", f"{point['current_ndvi']:.3f}")
-    b.metric("Climate stress", f"{point['stress_score']} / 100", point["stress_level"], delta_color="off")
-    c.metric("Rainfall anomaly", f"{point['rainfall_anomaly_pct']:+.0f}%")
+    a.metric(t('demo_ndvi', lang), t('formatted_value', lang, p0=f"{point['current_ndvi']:.3f}"))
+    b.metric(t('climate_stress', lang), t('stress_score_spaced', lang, p0=f"{point['stress_score']}"), display(point["stress_level"], lang), delta_color="off")
+    c.metric(t('rainfall_anomaly', lang), t('percentage', lang, p0=f"{point['rainfall_anomaly_pct']:+.0f}"))
     chart = go.Figure()
-    chart.add_trace(go.Scatter(x=shown.date, y=shown.seasonal_ndvi, name="Seasonal baseline (demo)", mode="lines+markers", line=dict(color="#9ba897", dash="dash", width=2)))
-    chart.add_trace(go.Scatter(x=shown.date, y=shown.current_ndvi, name="NDVI (demo)", mode="lines+markers", line=dict(color="#22634a", width=3), marker=dict(size=9)))
+    chart.add_trace(go.Scatter(x=shown.date, y=shown.seasonal_ndvi, name=t('seasonal_baseline_demo', lang), mode="lines+markers", line=dict(color="#9ba897", dash="dash", width=2)))
+    chart.add_trace(go.Scatter(x=shown.date, y=shown.current_ndvi, name=t('ndvi_demo', lang), mode="lines+markers", line=dict(color="#22634a", width=3), marker=dict(size=9)))
     chart.update_layout(height=360, margin=dict(l=10, r=20, t=20, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                         legend=dict(orientation="h", y=1.15), yaxis=dict(title="NDVI", range=[0.1, 0.38]),
                         xaxis=dict(title=None, range=[history.date.min().to_pydatetime() - timedelta(days=2), history.date.max().to_pydatetime() + timedelta(days=2)]))
-    st.plotly_chart(chart, width="stretch")
-    st.info(f"**{replay_decision['decision']}** · {replay_decision['explanation']}")
+    st.plotly_chart(localize_chart(chart, history.date.tolist(), lang), width="stretch")
+    st.info(t('recommendation_inline', lang, p0=f"{replay_decision['decision']}",
+              p1=explanation_text(point, point['date'].date(), lang, replay_decision)))
     for col, (_, event) in zip(st.columns(4), history.iterrows()):
         with col:
-            st.markdown(f"**{event.date:%d %B}**")
-            st.write(event.event)
-            st.caption(f"{calculate_stress(event)['stress_score']}/100 stress · synthetic")
-    st.write("This synthetic replay illustrates how recommendations change as environmental inputs change.")
-    st.caption("This demo illustrates the intended workflow. Demonstrating real lead time requires observed satellite/climate histories and independent validation.")
+            st.markdown(t('strong_value', lang, p0=f'{event.date:%d %B}'))
+            st.write(display(event.event, lang))
+            st.caption(t('synthetic_stress', lang, p0=f"{calculate_stress(event)['stress_score']}"))
+    st.write(t('this_synthetic_replay_illustrates_how_recommendations_change_as', lang))
+    st.caption(t('this_demo_illustrates_the_intended_workflow_demonstrating_real', lang))
 
 with replay:
     if historical_error:
-        st.error(f"Historical evidence failed validation: {historical_error}. The September reference dashboard remains available.")
+        st.error(t('historical_evidence_failed_validation_p0_the_september_reference', lang, p0=f'{historical_error}'))
     elif historical_meta:
-        render_observed_replay(historical_meta, historical_rows)
+        render_observed_replay(historical_meta, historical_rows, lang)
     else:
         render_demo_replay()
 
 with about:
-    st.subheader("About the pilot")
+    st.subheader(t('about_the_pilot', lang))
     a, b = st.columns([1, 2], gap="large")
     with a:
-        st.markdown("**PILOT LOCATION**\n\nAkkum Rural District  \nZhalagash District  \nKyzylorda Region  \nKazakhstan")
+        st.markdown(t('pilot_location_akkum_rural_district_zhalagash_district_kyzylorda', lang))
     with b:
-        st.write("SteppeGuard combines Earth observation, climate information and existing pasture management plans to help pastoral communities adapt grazing decisions to changing environmental conditions.")
-        st.markdown("### From static pasture planning\n### To climate-responsive pasture management")
-        st.write("The app reads local CSV and GeoJSON files, with transparent scoring and seasonal rules. The v0.2 acquisition script imports Sentinel-2 observations from Microsoft Planetary Computer and ERA5 reanalysis from Open-Meteo. Streamlit does not call data providers during use.")
+        st.write(t('steppeguard_combines_earth_observation_climate_information_and_existing', lang))
+        st.markdown(t('from_static_pasture_planning_to_climate_responsive_pasture', lang))
+        st.write(t('the_app_reads_local_csv_and_geojson_files', lang))
     st.divider()
-    st.markdown("**Future integrations — not yet implemented**")
-    st.write("Georeferenced official paddock boundaries · Paddock-specific environmental summaries · Livestock numbers · Pasture carrying capacity · Watering points")
-    st.markdown("**Data provenance**")
-    st.write("Satellite NDVI and ERA5 precipitation, temperature and surface soil moisture are summarized for a 5 km analysis zone around 44.916664, 64.712612. All four paddock schedules use this shared signal until the official plan map is georeferenced. The four displayed sectors are illustrative, not official boundaries. The 2026 rotation schedule is retained as the official-plan baseline; exact seasonal dates remain assumptions. Water access is not assessed. The historical evaluation applies these seasonal rules retrospectively to observed conditions; it does not establish actual past grazing, predictive skill or field outcomes.")
-    st.markdown("Sources: [Microsoft Planetary Computer / Copernicus Sentinel-2](https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a) · [Open-Meteo / ECMWF ERA5](https://open-meteo.com/en/docs/historical-weather-api) · [Official plan](https://old.adilet.zan.kz/kaz/docs/G24LF02818M)")
+    st.markdown(t('future_integrations_not_yet_implemented', lang))
+    st.write(t('georeferenced_official_paddock_boundaries_paddock_specific_environmental_summaries', lang))
+    st.markdown(t('data_provenance', lang))
+    st.write(t('satellite_ndvi_and_era5_precipitation_temperature_and_surface', lang))
+    st.markdown(t('sources_microsoft_planetary_computer_copernicus_sentinel_2_https', lang))
 st.divider()
-st.caption("This prototype is a decision-support demonstration and should not yet be used for operational livestock or land-management decisions.")
+st.caption(t('this_prototype_is_a_decision_support_demonstration_and', lang))
