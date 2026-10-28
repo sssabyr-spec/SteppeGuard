@@ -132,7 +132,7 @@ class ObservationTests(unittest.TestCase):
         self.assertFalse(app.exception)
         self.assertTrue(any("MIXED DATA" in item.value for item in app.warning))
         self.assertTrue(any("PARTLY OBSERVED" in item.value for item in app.caption))
-        dashboard = next(tab for tab in app.tabs if tab.label in ("Pasture dashboard", "September 2026 assessment"))
+        dashboard = next(e for e in app.expander if e.label == "September 2026 assessment")
         facts = next(item.value for item in dashboard.dataframe if "Indicator" in item.value.columns)
         self.assertIn("Source", facts.columns)
         self.assertTrue(any("REANALYSIS" in item for item in facts.Source))

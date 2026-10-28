@@ -276,5 +276,19 @@
   "error_unsupported_historical_evaluation": "Unsupported historical evaluation",
   "error_historical_artifact_checksum_mismatch_detail": "Historical artifact checksum mismatch: {detail}",
   "error_checksum_mismatch": "checksum mismatch",
-  "error_unknown_plan_detail": "Unknown plan: {detail}"
+  "error_unknown_plan_detail": "Unknown plan: {detail}",
+  "decision_question": "Should planned grazing be adapted?",
+  "fixed_case": "Observed case · 2–31 October 2025",
+  "case_official_plan": "**Official plan: autumn grazing · Paddock 4.**",
+  "case_plan_scope": "Historical comparison using the 2026 plan’s illustrative seasonal rules; not a record of actual grazing in 2025.",
+  "case_reasons": "- Vegetation anomaly: **{vegetation}%** against the seasonal baseline.\n- Rainfall anomaly: **{rainfall}%** against the historical reference.\n- Climate stress: **{score}/100**, within the moderate-stress range.",
+  "territory_conditions": "Conditions around Akkum",
+  "shared_zone": "Analysis zone: 5 km around Akkum. At the current prototype stage, environmental indicators are not calculated separately for individual paddocks.",
+  "selector_scope": "This illustrative paddock selector changes the displayed plan and map highlight only. Satellite and climate observations are shared across paddocks.",
+  "explore_other_periods": "Explore other historical periods",
+  "why_recommendation": "Why this recommendation?",
+  "methodology_sources": "Methodology and data sources",
+  "ai_disclosure": "SteppeGuard does not use generative AI to assess pasture conditions or generate management recommendations. Recommendations are calculated using predefined rules based on Sentinel-2 and ERA5 data. Generative AI was used as a software-development tool in building the prototype.",
+  "case_unavailable": "The observed October 2025 case is unavailable. No synthetic case is substituted.",
+  "history_validation_error": "Historical evidence failed validation: {p0}."
 }

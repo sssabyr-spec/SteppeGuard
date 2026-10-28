@@ -72,10 +72,10 @@ class LocalizationTests(unittest.TestCase):
         app = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=45).run()
         self.assertFalse(app.exception)
         self.assertEqual(app.radio(key='language').value, 'ru')
-        self.assertEqual([tab.label for tab in app.tabs], ['Наблюдаемый исторический пример', 'Оценка за сентябрь 2026 года', 'О пилотном проекте'])
+        self.assertFalse(app.tabs)
         self.assertEqual(app.metric[0].value, '-15,3%')
         self.assertTrue(any('54/100' == m.value for m in app.metric))
-        self.assertTrue(any('октябрь 2025 года' in h.value for h in app.subheader))
+        self.assertTrue(any('2–31 октября 2025 года' in h.value for h in app.caption))
         app.selectbox[0].select('Paddock 4').run()
         app.select_slider(key='observed_replay_date').set_value('2021-05-31').run()
         self.assertFalse(app.exception)
@@ -87,7 +87,7 @@ class LocalizationTests(unittest.TestCase):
         self.assertEqual(app.selectbox[0].value, 'Paddock 4')
         self.assertEqual(app.selectbox[0].key, 'paddock_en')
         self.assertEqual(app.select_slider(key='observed_replay_date').value, '2021-05-31')
-        self.assertEqual(app.tabs[0].label, 'Observed case study')
+        self.assertEqual(app.title[0].value, 'Should planned grazing be adapted?')
         self.assertTrue(any('50 / 100' == m.value for m in app.metric))
         self.assertEqual(downloads, [element.proto.url for element in app.get('download_button')])
         for translated, original in zip(ru_tables, app.dataframe):
@@ -110,12 +110,9 @@ class LocalizationTests(unittest.TestCase):
         with patch('src.data_loader.load_data', return_value=(polygons, metrics, history)), patch('src.historical.load_history', return_value=(None, None)):
             app = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=45).run()
             self.assertFalse(app.exception)
-            self.assertEqual(app.tabs[0].label, 'Мониторинг пастбищ')
-            self.assertEqual(app.tabs[1].label, 'Динамика засухи')
+            self.assertFalse(app.tabs)
             self.assertTrue(any('ОТЛОЖИТЬ ВЫПАС' in e.value for e in app.error))
-            for day in ['01 Jun 2026', '15 Jun 2026', '01 Jul 2026', '15 Jul 2026']:
-                app.select_slider(key='demo_replay_date').set_value(day).run()
-                self.assertFalse(app.exception)
+            self.assertFalse(app.select_slider)
         with patch('src.historical.load_history', side_effect=ValueError('Historical artifact checksum mismatch: evaluation.csv')):
             app = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=45).run()
             self.assertFalse(app.exception)

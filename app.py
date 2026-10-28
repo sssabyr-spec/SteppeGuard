@@ -1,7 +1,6 @@
 """SteppeGuard: local observations with explicit provenance and demo fallbacks."""
-from datetime import date, timedelta
+from datetime import date
 import pandas as pd
-import plotly.graph_objects as go
 import folium
 import streamlit as st
 from src.data_loader import load_data
@@ -9,15 +8,17 @@ from src.scoring import calculate_stress
 from src.recommendations import recommend, explanation_text
 from src.historical import load_history
 from src.replay import render_observed_replay
-from src.i18n import DEFAULT_LANGUAGE, LANGUAGES, t, display, display_frame, localize_chart
+from src.i18n import DEFAULT_LANGUAGE, LANGUAGES, t, display, display_frame
 
 lang = st.session_state.get("language", DEFAULT_LANGUAGE)
 st.set_page_config(page_title=display("SteppeGuard · Akkum pilot", lang), page_icon="🌾", layout="wide")
 lang = st.sidebar.radio("Язык / Language", options=list(LANGUAGES),
                         format_func=LANGUAGES.get, key="language")
 st.markdown("""<style>
-.block-container{max-width:1440px;padding-top:4.5rem;padding-bottom:3rem}
-h1{letter-spacing:-.05em;font-size:3.4rem!important} h2{letter-spacing:-.025em}
+.block-container{max-width:1000px;padding-top:4.5rem;padding-bottom:3rem}
+h1{letter-spacing:-.04em;font-size:2.4rem!important}
+.recommendation{font-size:clamp(1.5rem,4vw,2.1rem);font-weight:700;color:#73501d;background:#fff5e5;border-left:5px solid #dc922b;border-radius:12px;padding:20px;line-height:1.3}
+@media(max-width:640px){.block-container{padding-top:3rem} h1{font-size:1.9rem!important}} h2{letter-spacing:-.025em}
 [data-testid="stMetricValue"]{font-size:2.5rem;font-weight:650}
 [data-testid="stMetric"]{background:#fff;border:1px solid #dfe5da;border-radius:12px;padding:16px}
 .eyebrow{font-size:12px;letter-spacing:.16em;font-weight:700;color:#57715d;text-transform:uppercase}
@@ -28,7 +29,6 @@ h1{letter-spacing:-.05em;font-size:3.4rem!important} h2{letter-spacing:-.025em}
 .stTabs [data-baseweb="tab-list"]{gap:28px}.stTabs [data-baseweb="tab"]{font-size:16px}
 </style>""", unsafe_allow_html=True)
 
-ASSESSMENT_DATE = date(2026, 7, 1)
 COLORS = {"LOW": [60, 137, 94], "MODERATE": [220, 146, 43], "HIGH": [196, 68, 54], "REST": [124, 143, 149]}
 
 
@@ -40,47 +40,17 @@ def prepared_data():
     return polygons, pd.concat([metrics, decisions], axis=1), history
 
 
-try:
-    polygons, metrics, history = prepared_data()
-except (ValueError, OSError, KeyError) as exc:
-    st.error(t('unable_to_validate_the_local_datasets_p0_invalid', lang, p0=f'{exc}'))
-    st.stop()
+def render_reference():
+    try:
+        polygons, metrics, history = prepared_data()
+    except (ValueError, OSError, KeyError) as exc:
+        st.error(t('unable_to_validate_the_local_datasets_p0_invalid', lang, p0=f'{exc}'))
+        st.stop()
 
-left, right = st.columns([3, 1])
-with left:
-    st.markdown(t('akkum_rural_district_kazakhstan', lang), unsafe_allow_html=True)
-    st.title(t('steppeguard', lang))
-    st.markdown(t('climate_smart_pasture_management', lang), unsafe_allow_html=True)
-with right:
-    st.markdown(t('prototype_v0_2', lang))
-    st.caption(t('decision_support_demonstration_v0_2', lang))
-observed_count = int(metrics.vegetation_source.ne("DEMO").sum())
-fully_observed = observed_count == len(metrics) and metrics.soil_source.ne("DEMO").all()
-if fully_observed:
-    st.caption(t('observed_satellite_data_era5_reanalysis_data_approximate_analysis', lang))
-elif observed_count:
-    st.warning(t('mixed_data_p0_pilot_area_uses_observed_sentinel', lang, p0=f'{observed_count}'), icon="ℹ️")
-else:
-    st.warning(t('demo_data_no_observed_bundle_loaded_synthetic_environmental', lang), icon="ℹ️")
-
-historical_error = None
-try:
-    historical_meta, historical_rows = load_history()
-except (ValueError, OSError, KeyError) as exc:
-    historical_meta, historical_rows = None, None
-    historical_error = str(exc)
-replay_label = "Observed Historical Replay" if historical_meta and historical_meta.get("selected_date") else "Historical evaluation" if historical_meta or historical_error else "Drought Replay"
-if historical_meta and historical_meta.get("selected_date"):
-    replay, dashboard, about = st.tabs([t('observed_case_study', lang), t('september_2026_assessment', lang), t('about_the_pilot', lang)])
-else:
-    dashboard, replay, about = st.tabs([t('pasture_dashboard', lang), display(replay_label, lang), t('about_the_pilot', lang)])
-
-with dashboard:
-    counters = st.columns(4)
-    counters[0].metric(t('total_paddocks', lang), display(len(metrics), lang))
-    for col, level, label in zip(counters[1:], ["HIGH", "MODERATE", "LOW"], ["High stress paddocks", "Moderate stress paddocks", "Low stress paddocks"]):
-        col.metric(display(label, lang), display(int((metrics.stress_level == level).sum()), lang))
-    st.caption(t('all_four_schedules_use_the_same_observed_5', lang) if fully_observed else t('stress_counts_include_resting_paddocks_rest_is_a', lang))
+    observed_count = int(metrics.vegetation_source.ne("DEMO").sum())
+    fully_observed = observed_count == len(metrics) and metrics.soil_source.ne("DEMO").all()
+    if not fully_observed:
+        st.warning(t('mixed_data_p0_pilot_area_uses_observed_sentinel', lang, p0=str(observed_count)) if observed_count else t('demo_data_no_observed_bundle_loaded_synthetic_environmental', lang), icon="ℹ️")
     st.subheader(t('when_should_planned_grazing_be_adapted', lang))
     map_col, detail_col = st.columns([1.45, 1], gap="large")
     with map_col:
@@ -93,7 +63,8 @@ with dashboard:
                                 index=paddock_options.index(selected_paddock),
                                 format_func=lambda value: display(value, lang), key=f"paddock_{lang}")
         st.session_state["selected_paddock"] = selected
-        st.caption(t('use_this_selector_to_update_the_map_highlight', lang))
+        st.info(t('shared_zone', lang))
+        st.caption(t('selector_scope', lang))
         map_rows = []
         for _, geom_row in polygons.iterrows():
             row = metrics.set_index("paddock_id").loc[geom_row.paddock_id]
@@ -200,62 +171,19 @@ with dashboard:
             export[column] = pd.to_numeric(export[column]).round(1)
     st.download_button(t('download_assessment_csv', lang), export.to_csv(index=False).encode("utf-8-sig"), "steppeguard_assessment.csv", "text/csv")
 
-def render_demo_replay():
-    st.subheader(t('drought_replay', lang))
-    st.write(t('paddock_2_a_synthetic_deterioration_scenario_june_july', lang))
-    st.caption(t('demo_data_this_includes_simulated_dates_after_the', lang))
-    dates = history.date.dt.strftime("%d %b %Y").tolist()
-    replay_date = st.select_slider(t('replay_through', lang), options=dates, value=dates[-1],
-                                   format_func=lambda value: display(value, lang), key="demo_replay_date")
-    end = dates.index(replay_date)
-    shown = history.iloc[:end + 1]
-    point = shown.iloc[-1].to_dict()
-    point.update(calculate_stress(point))
-    point["official_plan"] = "Spring–summer grazing"
-    replay_decision = recommend(point, point["date"].date())
-    a, b, c = st.columns(3)
-    a.metric(t('demo_ndvi', lang), t('formatted_value', lang, p0=f"{point['current_ndvi']:.3f}"))
-    b.metric(t('climate_stress', lang), t('stress_score_spaced', lang, p0=f"{point['stress_score']}"), display(point["stress_level"], lang), delta_color="off")
-    c.metric(t('rainfall_anomaly', lang), t('percentage', lang, p0=f"{point['rainfall_anomaly_pct']:+.0f}"))
-    chart = go.Figure()
-    chart.add_trace(go.Scatter(x=shown.date, y=shown.seasonal_ndvi, name=t('seasonal_baseline_demo', lang), mode="lines+markers", line=dict(color="#9ba897", dash="dash", width=2)))
-    chart.add_trace(go.Scatter(x=shown.date, y=shown.current_ndvi, name=t('ndvi_demo', lang), mode="lines+markers", line=dict(color="#22634a", width=3), marker=dict(size=9)))
-    chart.update_layout(height=360, margin=dict(l=10, r=20, t=20, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                        legend=dict(orientation="h", y=1.15), yaxis=dict(title="NDVI", range=[0.1, 0.38]),
-                        xaxis=dict(title=None, range=[history.date.min().to_pydatetime() - timedelta(days=2), history.date.max().to_pydatetime() + timedelta(days=2)]))
-    st.plotly_chart(localize_chart(chart, history.date.tolist(), lang), width="stretch")
-    st.info(t('recommendation_inline', lang, p0=f"{replay_decision['decision']}",
-              p1=explanation_text(point, point['date'].date(), lang, replay_decision)))
-    for col, (_, event) in zip(st.columns(4), history.iterrows()):
-        with col:
-            st.markdown(t('strong_value', lang, p0=f'{event.date:%d %B}'))
-            st.write(display(event.event, lang))
-            st.caption(t('synthetic_stress', lang, p0=f"{calculate_stress(event)['stress_score']}"))
-    st.write(t('this_synthetic_replay_illustrates_how_recommendations_change_as', lang))
-    st.caption(t('this_demo_illustrates_the_intended_workflow_demonstrating_real', lang))
-
-with replay:
-    if historical_error:
-        st.error(t('historical_evidence_failed_validation_p0_the_september_reference', lang, p0=f'{historical_error}'))
-    elif historical_meta:
-        render_observed_replay(historical_meta, historical_rows, lang)
-    else:
-        render_demo_replay()
-
-with about:
-    st.subheader(t('about_the_pilot', lang))
-    a, b = st.columns([1, 2], gap="large")
-    with a:
-        st.markdown(t('pilot_location_akkum_rural_district_zhalagash_district_kyzylorda', lang))
-    with b:
-        st.write(t('steppeguard_combines_earth_observation_climate_information_and_existing', lang))
-        st.markdown(t('from_static_pasture_planning_to_climate_responsive_pasture', lang))
-        st.write(t('the_app_reads_local_csv_and_geojson_files', lang))
-    st.divider()
-    st.markdown(t('future_integrations_not_yet_implemented', lang))
-    st.write(t('georeferenced_official_paddock_boundaries_paddock_specific_environmental_summaries', lang))
-    st.markdown(t('data_provenance', lang))
-    st.write(t('satellite_ndvi_and_era5_precipitation_temperature_and_surface', lang))
-    st.markdown(t('sources_microsoft_planetary_computer_copernicus_sentinel_2_https', lang))
+st.markdown(t('akkum_rural_district_kazakhstan', lang), unsafe_allow_html=True)
+st.caption(t('steppeguard', lang))
+st.title(t('decision_question', lang))
+try:
+    historical_meta, historical_rows = load_history()
+except (ValueError, OSError, KeyError) as exc:
+    st.error(t('history_validation_error', lang, p0=str(exc)))
+    historical_meta, historical_rows = None, None
+if historical_meta:
+    render_observed_replay(historical_meta, historical_rows, lang, render_reference)
+else:
+    st.info(t('case_unavailable', lang))
+    with st.expander(t('explore_other_periods', lang)):
+        render_reference()
 st.divider()
 st.caption(t('this_prototype_is_a_decision_support_demonstration_and', lang))
